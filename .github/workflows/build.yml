@@ -4,7 +4,6 @@ name: Build EXE
 on:
   push:
     branches: [ "main" ]
-    paths: [ "*.py" ]
 
 jobs:
   build:
@@ -19,11 +18,13 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
+        shell: pwsh
         run: |
           pip install pyinstaller
           if (Test-Path "requirements.txt") { pip install -r requirements.txt }
 
       - name: Build EXE
+        shell: pwsh
         run: |
           $pyFiles = Get-ChildItem -Filter "*.py" -Exclude "setup.py" | Select-Object -ExpandProperty Name
           foreach ($f in $pyFiles) {
