@@ -1,0 +1,39 @@
+# GitHub Actions: Auto-build .exe from .py via PyInstaller
+name: Build EXE
+
+on:
+  push:
+    branches: [ "main" ]
+    paths: [ "*.py" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          if (Test-Path "requirements.txt") { pip install -r requirements.txt }
+
+      - name: Build EXE
+        run: |
+          $pyFiles = Get-ChildItem -Filter "*.py" -Exclude "setup.py" | Select-Object -ExpandProperty Name
+          foreach ($f in $pyFiles) {
+            $name = [System.IO.Path]::GetFileNameWithoutExtension($f)
+            Write-Host "Building $f → $name.exe"
+            pyinstaller --onefile --console --name "$name" "$f"
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-exe
+          path: dist/*.exe
