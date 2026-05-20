@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,24 +20,31 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: List workspace files
+        run: Get-ChildItem -Recurse -File
+
       - name: Install dependencies
-        shell: pwsh
         run: |
           pip install pyinstaller
           if (Test-Path "requirements.txt") { pip install -r requirements.txt }
 
       - name: Build EXE
-        shell: pwsh
         run: |
-          $pyFiles = Get-ChildItem -Filter "*.py" -Exclude "setup.py" | Select-Object -ExpandProperty Name
-          foreach ($f in $pyFiles) {
-            $name = [System.IO.Path]::GetFileNameWithoutExtension($f)
-            Write-Host "Building $f → $name.exe"
-            pyinstaller --onefile --console --name "$name" "$f"
+          $files = @(Get-ChildItem -Path "$env:GITHUB_WORKSPACE" -Filter "*.py" -Recurse | Where-Object { $_.Name -ne "setup.py" })
+          Write-Host "Found $($files.Count) Python files"
+          foreach ($f in $files) {
+            $name = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+            Write-Host "Building $($f.Name) -> $name.exe"
+            pyinstaller --onefile --console --name "$name" "$($f.FullName)" 2>&1
           }
+
+      - name: Check dist folder
+        run: |
+          if (Test-Path "dist") { Get-ChildItem dist } else { Write-Host "No dist folder" }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: built-exe
           path: dist/*.exe
+          if-no-files-found: error
