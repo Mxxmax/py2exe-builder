@@ -27,7 +27,7 @@ jobs:
           $files = @(Get-ChildItem -Path "$env:GITHUB_WORKSPACE" -Filter "*.py" -Recurse | Where-Object { $_.Name -ne "setup.py" })
           foreach ($f in $files) {
             $name = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
-            pyinstaller --onefile --noconsole --name "$name" "$($f.FullName)" 2>&1
+            pyinstaller --onefile --console --name "$name" "$($f.FullName)" 2>&1
           }
 
       - name: Upload artifacts
