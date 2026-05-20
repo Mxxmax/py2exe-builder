@@ -12,16 +12,10 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: List workspace files
-        run: Get-ChildItem -Recurse -File
 
       - name: Install dependencies
         run: |
@@ -31,16 +25,10 @@ jobs:
       - name: Build EXE
         run: |
           $files = @(Get-ChildItem -Path "$env:GITHUB_WORKSPACE" -Filter "*.py" -Recurse | Where-Object { $_.Name -ne "setup.py" })
-          Write-Host "Found $($files.Count) Python files"
           foreach ($f in $files) {
             $name = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
-            Write-Host "Building $($f.Name) -> $name.exe"
             pyinstaller --onefile --console --name "$name" "$($f.FullName)" 2>&1
           }
-
-      - name: Check dist folder
-        run: |
-          if (Test-Path "dist") { Get-ChildItem dist } else { Write-Host "No dist folder" }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
