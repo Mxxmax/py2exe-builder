@@ -88,7 +88,7 @@ def gh_get(url, token):        return _req("GET", url, token)
 def gh_post(url, token, **kw): return _req("POST", url, token, json=kw.get("json") or {})
 def gh_put(url, token, **kw):  return _req("PUT", url, token, json=kw.get("json"))
 def gh_patch(url, token, **kw):return _req("PATCH", url, token, json=kw.get("json"))
-def gh_del(url, token):        return _req("DELETE", url, token)
+def gh_del(url, token, **kw):  return _req("DELETE", url, token, json=kw.get("json"))
 
 
 # ══════════════════════════════════════════════════
@@ -120,6 +120,22 @@ def get_file_sha(token, username, path, branch="main"):
     if r.status_code == 200:
         return r.json()["sha"]
     return None
+
+def list_root_py_files(token, username, branch="main"):
+    """List all .py files in the repo root directory."""
+    r = gh_get(f"{API}/repos/{username}/{REPO_NAME}/contents/?ref={branch}", token)
+    if r.status_code == 200:
+        return [f["name"] for f in r.json()
+                if f["type"] == "file" and f["name"].endswith(".py")]
+    return []
+
+def delete_file(token, username, path, branch="main"):
+    sha = get_file_sha(token, username, path, branch)
+    if not sha:
+        return True
+    url = f"{API}/repos/{username}/{REPO_NAME}/contents/{path}"
+    r = gh_del(url, token, json={"message": f"cleanup: remove {path}", "sha": sha, "branch": branch})
+    return r.status_code in (200, 204)
 
 def push_files(token, username, branch, files_dict, commit_msg):
     """Push multiple files atomically using the Contents API."""
@@ -292,6 +308,14 @@ def main():
 
     # ――― Repo ―――
     ensure_repo(token, username)
+
+    # ――― Clean old .py files from repo ―――
+    old_py = list_root_py_files(token, username)
+    for f in old_py:
+        if f != f"{exe_name}.py":
+            delete_file(token, username, f)
+    if old_py:
+        print(f"  🧹 清理 {len(old_py)} 个旧 .py 文件")
 
     # ――― Prepare files ―――
     source_code = py_path.read_text(encoding="utf-8")
